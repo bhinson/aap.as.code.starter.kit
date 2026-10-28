@@ -29,18 +29,22 @@
         scope: write
         state: present
 
+    # The remote vault is optional. Without it, subscription settings are left unchanged.
     - name: Grab vault from remote url
+      when: my_remote_vault is defined
       ansible.builtin.get_url:
         url: '{{ my_remote_vault }}'
-        dest: files/config_as_code/remotevault.yml
+        dest: "{{ playbook_dir }}/files/config_as_code/remotevault.yml"
         mode: '0644'
         validate_certs: false
 
     - name: Cat a file from project
+      when: my_remote_vault is defined
       register: command_output
       ansible.builtin.command: cat "{{ playbook_dir }}/files/config_as_code/remotevault.yml"
 
     - name: Display file content
+      when: my_remote_vault is defined
       ansible.builtin.debug:
         var: command_output.stdout
 

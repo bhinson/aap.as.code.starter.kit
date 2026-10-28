@@ -5,3 +5,7 @@ env
 *.orig
 *.json
 .lock
+secrets.yml
+*.secret*
+kubeconfig*
+collections/ansible_collections/
