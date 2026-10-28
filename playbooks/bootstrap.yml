@@ -19,6 +19,7 @@
     starter_kit_inventory: Demo Inventory
     starter_kit_execution_environment: Default execution environment
     starter_kit_credential: Starter Kit - AAP Credential
+    starter_kit_galaxy_token_description: Starter Kit - Galaxy
     starter_kit_hub_repos:
       - name: Automation Hub - certified
         repo: rh-certified
@@ -43,17 +44,32 @@
         state: present
       no_log: true
 
-    # The gateway rejects AAP API tokens from ansible-galaxy, so project syncs need a hub token.
-    # Generating one replaces the service account's previous hub token.
-    - name: Generate a hub API token for the service account
+    # On AAP 2.7 the gateway rejects hub API tokens from ansible-galaxy but accepts a gateway
+    # API token, so project syncs use a read-scoped token owned by the service account.
+    # Each run replaces the previous one.
+    - name: Find the service account's previous Galaxy token
       ansible.builtin.uri:
-        url: "{{ aap_hostname }}/api/galaxy/v3/auth/token/"
-        method: POST
+        url: "{{ aap_hostname }}/api/gateway/v1/tokens/?description={{ starter_kit_galaxy_token_description | urlencode }}"
         url_username: "{{ starter_kit_svc_username }}"
         url_password: "{{ starter_kit_svc_password }}"
         force_basic_auth: true
         validate_certs: "{{ aap_validate_certs }}"
-      register: starter_kit_hub_token
+      register: starter_kit_old_tokens
+
+    - name: Create a read-scoped gateway token for the Galaxy credentials
+      ansible.builtin.uri:
+        url: "{{ aap_hostname }}/api/gateway/v1/tokens/"
+        method: POST
+        body_format: json
+        body:
+          description: "{{ starter_kit_galaxy_token_description }}"
+          scope: read
+        status_code: 201
+        url_username: "{{ starter_kit_svc_username }}"
+        url_password: "{{ starter_kit_svc_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ aap_validate_certs }}"
+      register: starter_kit_galaxy_token
       no_log: true
 
     - name: Create the Galaxy credentials for the private automation hub
@@ -63,11 +79,24 @@
         credential_type: Ansible Galaxy/Automation Hub API Token
         inputs:
           url: "{{ aap_hostname }}/api/galaxy/content/{{ item.repo }}/"
-          token: "{{ starter_kit_hub_token.json.token }}"
+          token: "{{ starter_kit_galaxy_token.json.token }}"
       loop: "{{ starter_kit_hub_repos }}"
       loop_control:
         label: "{{ item.name }}"
       no_log: true
+
+    - name: Delete the previous Galaxy tokens
+      ansible.builtin.uri:
+        url: "{{ aap_hostname }}/api/gateway/v1/tokens/{{ item.id }}/"
+        method: DELETE
+        status_code: 204
+        url_username: "{{ starter_kit_svc_username }}"
+        url_password: "{{ starter_kit_svc_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ aap_validate_certs }}"
+      loop: "{{ starter_kit_old_tokens.json.results }}"
+      loop_control:
+        label: "{{ item.id }}"
 
     - name: Read the organization's current Galaxy credentials
       ansible.builtin.set_fact:
@@ -108,6 +137,7 @@
         scm_url: "{{ starter_kit_scm_url }}"
         scm_branch: "{{ starter_kit_scm_branch }}"
         scm_update_on_launch: true
+        update_project: true
         default_environment: "{{ starter_kit_execution_environment }}"
         wait: true
 
