@@ -7,3 +7,13 @@ controller_projects:
   scm_type: git
   scm_update_on_launch: 'no'
   scm_url: https://github.com/ericcames/image.builder.pipeline.git
+
+# Demo objects: delete them in the UI, then re-run "Setup - AAP - CAC" to recreate them.
+- name: Example - AAP - CAC
+  description: Config as code demo project
+  organization: Default
+  scm_type: git
+  scm_url: https://github.com/ansible/ansible-tower-samples.git
+  scm_branch: master
+  scm_update_on_launch: true
+  default_environment: Default execution environment

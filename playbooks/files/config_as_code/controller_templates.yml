@@ -1,0 +1,11 @@
+---
+controller_templates:
+  - name: Example - AAP - CAC
+    description: Config as code demo job template
+    organization: Default
+    project: Example - AAP - CAC
+    playbook: hello_world.yml
+    inventory: Demo Inventory
+    execution_environment: Default execution environment
+    credentials:
+      - Example - AAP - CAC
